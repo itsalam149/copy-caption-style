@@ -1,8 +1,9 @@
-// app/get-started/page.tsx
-"use client"; // This component uses client-side hooks like useState, so mark it.
+"use client";
 
 import { useState } from "react";
-import { useRouter } from "next/navigation"; // For navigation
+import { useRouter } from "next/navigation";
+import { Input } from "@/components/ui/Input";
+import { Button } from "@/components/ui/Button";
 import {
   Card,
   CardContent,
@@ -10,171 +11,130 @@ import {
   CardTitle,
   CardDescription,
 } from "@/components/ui/Card";
-import { Button } from "@/components/ui/Button";
-import { Input } from "@/components/ui/Input";
-import { Spinner } from "@/components/ui/Spinner"; // You'll create this minimal spinner
-import { cn } from "@/lib/utils";
-import { motion } from "framer-motion";
+import { Upload, Link as LinkIcon, Loader2 } from "lucide-react";
+
+// Store data in a simple client-side cache to pass to the editor page
+const editorDataStore = {
+  assText: "",
+  videoUrl: "",
+};
 
 export default function GetStartedPage() {
+  const router = useRouter();
   const [reelLink, setReelLink] = useState("");
   const [videoFile, setVideoFile] = useState<File | null>(null);
   const [isLoading, setIsLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const router = useRouter(); // Initialize Next.js router
 
   const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault(); // Prevent default form submission
-    setError(null); // Clear previous errors
-
-    if (!reelLink.trim()) {
-      setError("Please provide an Instagram Reel link.");
+    e.preventDefault();
+    if (!reelLink || !videoFile) {
+      alert("Please provide both a Reel link and a video file.");
       return;
     }
-    if (!videoFile) {
-      setError("Please upload a video file.");
-      return;
-    }
-
     setIsLoading(true);
 
+    const formData = new FormData();
+    formData.append("reelLink", reelLink);
+    formData.append("videoFile", videoFile);
+
     try {
-      // In a real application, you would:
-      // 1. Create a FormData object
-      const formData = new FormData();
-      formData.append("reelLink", reelLink);
-      formData.append("videoFile", videoFile);
-
-      // 2. Send it to your existing backend API
-      // const response = await fetch('/api/process-video', { // Adjust endpoint as needed
-      //   method: 'POST',
-      //   body: formData,
-      // });
-
-      // 3. Handle the response
-      // if (!response.ok) {
-      //   const errorData = await response.json();
-      //   throw new Error(errorData.message || 'Failed to process video.');
-      // }
-      // const data = await response.json();
-      // const { videoUrl, assFileUrl } = data; // Assuming your backend returns these URLs
-
-      // --- Simulation for demonstration ---
-      console.log("Simulating backend processing...");
-      await new Promise((resolve) => setTimeout(resolve, 3000)); // Simulate 3-second processing
-      // For actual video, you'd get a *server-hosted* URL for the uploaded video
-      const simulatedVideoUrl = `/temp-videos/${videoFile.name}`; // Example: point to a public temp dir
-      const simulatedAssFileUrl = "/temp-subtitles/generated_subtitles.ass"; // Example: point to a public temp dir
-      // In a real app, you'd store the actual uploaded file and generated ASS server-side
-      // and pass their accessible URLs. For client-side, if the file remains client-side,
-      // you could pass a Blob URL, but for persistence and re-rendering, server URLs are better.
-      // For now, these are illustrative paths.
-      // --- End Simulation ---
-
-      // Navigate to the editor page, passing the video and ASS file URLs as query parameters
-      // Or, ideally, store them in a state management solution (e.g., Zustand, Context) or server-side store
-      router.push(
-        `/editor?videoUrl=${encodeURIComponent(
-          simulatedVideoUrl
-        )}&assUrl=${encodeURIComponent(simulatedAssFileUrl)}`
+      // IMPORTANT: Replace with your actual backend URL
+      const response = await fetch(
+        "https://your-backend-url.com/process-video",
+        {
+          method: "POST",
+          body: formData,
+        }
       );
-    } catch (err: any) {
-      console.error("Processing error:", err);
-      setError(
-        err.message ||
-          "An unexpected error occurred during processing. Please try again."
-      );
-    } finally {
+
+      if (!response.ok) {
+        throw new Error(`Backend error: ${response.statusText}`);
+      }
+
+      // Assume the backend returns the .ass file content as plain text
+      const assText = await response.text();
+
+      // Store data and navigate
+      editorDataStore.assText = assText;
+      editorDataStore.videoUrl = URL.createObjectURL(videoFile);
+
+      router.push("/editor");
+    } catch (error) {
+      console.error("Failed to process video:", error);
+      alert("An error occurred. Please check the console for more details.");
       setIsLoading(false);
     }
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center p-4 bg-sky-blue-50">
-      <motion.div
-        initial={{ opacity: 0, y: 20, scale: 0.95 }}
-        animate={{ opacity: 1, y: 0, scale: 1 }}
-        transition={{ duration: 0.5, ease: "easeOut" }}
-        className="w-full max-w-md"
-      >
-        <Card className="p-6">
-          <CardHeader className="pb-4">
-            <CardTitle className="text-center text-sky-blue-800">
-              Get Started with Caption-AI
-            </CardTitle>
-            <CardDescription className="text-center">
-              Paste your Instagram Reel link and upload the video you want to
-              style.
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <form onSubmit={handleSubmit} className="space-y-6">
-              <div>
-                <label
-                  htmlFor="reel-link"
-                  className="block text-sm font-medium text-gray-700 mb-2"
-                >
-                  Instagram Reel Link
-                </label>
+    <div className="flex items-center justify-center min-h-screen bg-background">
+      <Card className="w-full max-w-lg mx-4">
+        <CardHeader>
+          <CardTitle>Create Your Video</CardTitle>
+          <CardDescription>
+            Provide a Reel link and your video to start editing.
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <form onSubmit={handleSubmit} className="space-y-6">
+            <div className="space-y-2">
+              <label htmlFor="reel-link">Instagram Reel Link</label>
+              <div className="flex items-center relative">
+                <LinkIcon className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
                 <Input
-                  type="url"
                   id="reel-link"
-                  placeholder="e.g., https://www.instagram.com/reel/abcdef123"
+                  type="url"
+                  placeholder="https://www.instagram.com/reels/..."
                   value={reelLink}
                   onChange={(e) => setReelLink(e.target.value)}
+                  className="pl-10"
                   required
-                  className="rounded-lg border-border focus:ring-primary focus:border-primary"
                 />
               </div>
-              <div>
-                <label
-                  htmlFor="video-file"
-                  className="block text-sm font-medium text-gray-700 mb-2"
-                >
-                  Upload Your Video (.mp4)
-                </label>
+            </div>
+            <div className="space-y-2">
+              <label htmlFor="video-file">Your Landscape Video (.mp4)</label>
+              <label className="flex flex-col items-center justify-center w-full h-32 border-2 border-dashed rounded-lg cursor-pointer hover:bg-muted">
+                <div className="flex flex-col items-center justify-center pt-5 pb-6 text-muted-foreground">
+                  <Upload className="w-8 h-8 mb-2" />
+                  <p className="text-sm text-center">
+                    {videoFile
+                      ? videoFile.name
+                      : "Click to upload or drag and drop"}
+                  </p>
+                </div>
                 <Input
-                  type="file"
                   id="video-file"
-                  accept=".mp4"
-                  onChange={(e) =>
-                    setVideoFile(e.target.files ? e.target.files[0] : null)
-                  }
+                  type="file"
+                  className="hidden"
+                  accept="video/mp4"
+                  onChange={(e) => setVideoFile(e.target.files?.[0] || null)}
                   required
-                  className="block w-full text-sm text-gray-500
-                    file:mr-4 file:py-2 file:px-4
-                    file:rounded-full file:border-0
-                    file:text-sm file:font-semibold
-                    file:bg-sky-blue-100 file:text-sky-blue-700
-                    hover:file:bg-sky-blue-200 cursor-pointer"
                 />
-              </div>
-
-              {error && (
-                <motion.p
-                  initial={{ opacity: 0, y: -10 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  className="text-red-600 text-sm text-center bg-red-50 p-2 rounded-md border border-red-200"
-                >
-                  {error}
-                </motion.p>
+              </label>
+            </div>
+            <Button type="submit" className="w-full" disabled={isLoading}>
+              {isLoading ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Processing...
+                </>
+              ) : (
+                "Generate Captions"
               )}
-
-              <Button
-                type="submit"
-                className={cn(
-                  "w-full py-3 text-lg rounded-xl flex items-center justify-center space-x-2",
-                  isLoading && "opacity-70 cursor-not-allowed"
-                )}
-                disabled={isLoading}
-              >
-                {isLoading && <Spinner className="w-5 h-5" />}
-                <span>{isLoading ? "Processing..." : "Process Video"}</span>
-              </Button>
-            </form>
-          </CardContent>
-        </Card>
-      </motion.div>
+            </Button>
+          </form>
+        </CardContent>
+      </Card>
+      {/* We need a place to export our data store for the editor page to import */}
+      <script
+        dangerouslySetInnerHTML={{
+          __html: `window.editorDataStore = ${JSON.stringify(editorDataStore)}`,
+        }}
+      />
     </div>
   );
 }
+
+// Export the data store so the editor page can access it
+export { editorDataStore };

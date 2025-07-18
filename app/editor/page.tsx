@@ -21,8 +21,8 @@ export default function VideoEditorPage() {
   const assUrl = searchParams.get("assUrl");
 
   const [videoLoaded, setVideoLoaded] = useState(false);
-  const [captions, setCaptions] = useState<any[]>([]); // This will hold parsed ASS data
-  const [selectedCaption, setSelectedCaption] = useState<any | null>(null);
+  const [captions, setCaptions] = useState<unknown[]>([]); // This will hold parsed ASS data
+  const [selectedCaption, setSelectedCaption] = useState<unknown | null>(null);
 
   useEffect(() => {
     if (!videoUrl || !assUrl) {
@@ -104,7 +104,7 @@ export default function VideoEditorPage() {
   }
 
   // Function to update a caption's properties
-  const updateCaption = (id: string, updates: Partial<any>) => {
+  const updateCaption = (id: string, updates: Partial<unknown>) => {
     setCaptions((prevCaptions) =>
       prevCaptions.map((cap) =>
         cap.id === id
